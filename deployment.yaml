@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: campus-energy-monitor-system
-        image: YOUR_DOCKERHUB_USERNAME/campus-energy-monitor-system:latest
+        image: 78619/campus-energy-monitor-system:latest
         ports:
         - containerPort: 80
 ---
