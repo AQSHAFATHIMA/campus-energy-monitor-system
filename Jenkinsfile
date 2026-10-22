@@ -4,7 +4,7 @@ pipeline {
         string(name: 'IMAGE_TAG', defaultValue: 'v1', description: 'Docker Image Version Tag')
     }
     environment {
-        DOCKER_HUB_USER = 'YOUR_DOCKERHUB_USERNAME'
+        DOCKER_HUB_USER = '78619'
         IMAGE_NAME = 'campus-energy-monitor-system'
     }
     stages {
