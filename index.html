@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Campus Energy Monitor</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 30px; 
+            background-color: #f4f4f9; 
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+        }
+        .summary { 
+            background: #e2f0d9; 
+            border-left: 5px solid #2e7d32;
+            padding: 20px; 
+            border-radius: 8px; 
+            font-size: 1.2em; 
+            margin-bottom: 25px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            border-top: 4px solid #3498db;
+        }
+        .warning-card {
+            border-top: 4px solid #e74c3c;
+        }
+        .warning-text { 
+            color: #c0392b; 
+            font-weight: bold; 
+            background: #fdf2f2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            border: 1px solid #f9acd0;
+        }
+        .metric {
+            font-size: 1.1em;
+            margin: 10px 0;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Smart Campus Energy Monitoring System</h1>
+    
+    <!-- Requirement 1 (Enhancement): Campus Summary View -->
+    <div class="summary" id="summary-section"></div>
+
+    <!-- Requirement 1 (Initial): Building Dashboard Display Grid -->
+    <div class="dashboard-grid" id="dashboard-grid"></div>
+
+    <script>
+        // Sample dataset representing campus building configurations
+        const campusBuildings = [
+            { name: "Engineering Block", consumption: 120, target: 90 },
+            { name: "Science Lab", consumption: 85, target: 80 },
+            { name: "Main Library", consumption: 105, target: 70 }
+        ];
+
+        let totalCampusConsumption = 0;
+        let highestConsumer = campusBuildings[0];
+
+        // Process data metrics
+        campusBuildings.forEach(building => {
+            totalCampusConsumption += building.consumption;
+            if (building.consumption > highestConsumer.consumption) {
+                highestConsumer = building;
+            }
+        });
+
+        // Inject Campus Summary into DOM
+        document.getElementById('summary-section').innerHTML = `
+            <strong>📊 Campus Energy Summary Dashboard:</strong><br>
+            <div style="margin-top: 10px;">
+                • Total Combined Campus Consumption: <span class="highlight">${totalCampusConsumption} kWh</span><br>
+                • Peak Energy Consumer: <span style="color:#c0392b; font-weight:bold;">${highestConsumer.name} (${highestConsumer.consumption} kWh)</span>
+            </div>
+        `;
+
+        // Inject Building Specific Cards into DOM
+        const gridContainer = document.getElementById('dashboard-grid');
+        campusBuildings.forEach(building => {
+            let limitWarningHTML = '';
+            let cardStyleClass = 'card';
+
+            // Constraint: Trigger warning alerts if daily thresholds cross 100 kWh limits
+            if (building.consumption > 100) {
+                cardStyleClass = 'card warning-card';
+                const excessLimit = building.consumption - 100;
+                limitWarningHTML = `
+                    <div class="warning-text">
+                        ⚠️ ALERT: Exceeded threshold limit of 100 kWh by ${excessLimit} kWh!
+                    </div>`;
+            }
+
+            gridContainer.innerHTML += `
+                <div class="${cardStyleClass}">
+                    <h3>🏢 ${building.name}</h3>
+                    <div class="metric">Daily Usage: <span class="highlight">${building.consumption} kWh</span></div>
+                    <div class="metric">Target Envelope: <span class="highlight">${building.target} kWh</span></div>
+                    ${limitWarningHTML}
+                </div>`;
+        });
+    </script>
+</body>
+</html>
