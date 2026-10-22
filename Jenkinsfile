@@ -1,49 +1,122 @@
 pipeline {
     agent any
-    parameters {
-        string(name: 'IMAGE_TAG', defaultValue: 'v1', description: 'Docker Image Version Tag')
+
+    options {
+        timestamps()
     }
+
     environment {
-        DOCKER_HUB_USER = '78619'
-        IMAGE_NAME = 'campus-energy-monitor-system'
+        DOCKER_IMAGE = '78619/campus-energy'
+        K8S_DEPLOYMENT = 'smart-campus-energy'
+        K8S_CONTAINER = 'energy-dashboard'
     }
+
     stages {
+
         stage('Checkout Code') {
             steps {
-                checkout scm
+                echo 'Checking out Smart Campus Energy project'
+                bat 'dir'
             }
         }
+
         stage('Build & Test Parallel') {
             parallel {
+
                 stage('Build Docker Image') {
                     steps {
-                        bat "docker build -t %DOCKER_HUB_USER%/%IMAGE_NAME%:%IMAGE_TAG% ."
-                        bat "docker tag %DOCKER_HUB_USER%/%IMAGE_NAME%:%IMAGE_TAG% %DOCKER_HUB_USER%/%IMAGE_NAME%:latest"
+                        echo 'Building Docker image'
+                        bat 'docker build -t 78619/campus-energy:v1 .'
                     }
                 }
+
                 stage('Lint Code Source') {
                     steps {
-                        echo 'Testing dashboard HTML structure using Windows findstr...'
-                        bat 'findstr /C:"Smart Campus Energy Monitoring System" index.html'
+                        echo 'Checking HTML and Dockerfile'
+
+                        bat 'if not exist index.html exit /b 1'
+                        bat 'if not exist Dockerfile exit /b 1'
+                        bat 'findstr /i "<html" index.html'
+
+                        echo 'HTML and Dockerfile checks passed'
                     }
                 }
             }
         }
+
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    bat "echo %PASS% | docker login -u %USER% --password-stdin"
-                    bat "docker push %DOCKER_HUB_USER%/%IMAGE_NAME%:%IMAGE_TAG%"
-                    bat "docker push %DOCKER_HUB_USER%/%IMAGE_NAME%:latest"
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DH_USER',
+                        passwordVariable: 'DH_PASS'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+                        echo %DH_PASS%| docker login -u %DH_USER% --password-stdin
+                        if errorlevel 1 exit /b 1
+                    '''
+                }
+
+                bat 'docker push 78619/campus-energy:v1'
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    try {
+                        bat 'kubectl apply -f deployment.yaml'
+
+                        bat 'kubectl rollout status deployment/smart-campus-energy --timeout=120s'
+
+                        echo 'Deployment successful'
+
+                    } catch (err) {
+                        echo 'Deployment failed. Attempting rollback.'
+
+                        bat 'kubectl rollout undo deployment/smart-campus-energy'
+
+                        bat 'kubectl rollout status deployment/smart-campus-energy --timeout=120s'
+
+                        error('Deployment failed. Rollback attempted.')
+                    }
                 }
             }
         }
-        stage('Deploy to Kubernetes') {
+
+        stage('Verify Deployment') {
             steps {
-                bat "powershell -Command \"(Get-Content deployment.yaml) -replace ':%DOCKER_HUB_USER%/%IMAGE_NAME%:latest', ':%DOCKER_HUB_USER%/%IMAGE_NAME%:%IMAGE_TAG%' | Set-Content deployment.yaml\""
-                bat "kubectl apply -f deployment.yaml"
-                bat "kubectl rollout status deployment/campus-energy-monitor-system"
+                bat 'kubectl get deployments'
+                bat 'kubectl get pods'
+                bat 'kubectl get services'
             }
+        }
+
+        stage('Archive Build Artifacts') {
+            steps {
+                archiveArtifacts(
+                    artifacts: 'index.html,Dockerfile,Jenkinsfile,deployment.yaml',
+                    fingerprint: true
+                )
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Smart Campus Energy pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check Console Output.'
+        }
+
+        always {
+            echo 'Pipeline execution finished.'
         }
     }
 }
+```
